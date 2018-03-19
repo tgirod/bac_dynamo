@@ -55,22 +55,24 @@ const SPISettings settings = SPISettings(
  * FIXME : utiliser SPISettings pour initialiser la liaison
  */
 
-void setupSPI() {
-    SPI.setBitOrder(MSBFIRST);
-    SPI.begin();
-}
-
 #define OPEN(CS) digitalWrite((CS), LOW)
 #define SEND(ADDR,DATA) SPI.transfer16((ADDR<<8)+(DATA))
 #define CLOSE(CS) digitalWrite((CS), HIGH)
+
+void setupSPI() {
+    pinMode(CS_VELO, OUTPUT);
+    digitalWrite(CS_VELO, HIGH);
+    pinMode(CS_GLOBAL, OUTPUT);
+    digitalWrite(CS_GLOBAL, HIGH);
+    SPI.setBitOrder(MSBFIRST);
+    SPI.begin();
+}
 
 /*
  * initialise les modules d'affichage pour les vélos
  */
 
 void setupVelo() {
-    pinMode(CS_VELO, OUTPUT);
-
     // mode B, permet d'afficher 0-9
     OPEN(CS_VELO);
     for (int i=0; i<NB_VELO; i++) SEND(OP_DECODEMODE, 0xFF);
@@ -97,7 +99,6 @@ void setupVelo() {
  */
 
 void setupGlobal() {
-    pinMode(CS_GLOBAL, OUTPUT);
 
     // mode B, permet d'afficher 0-9
     OPEN(CS_GLOBAL);
@@ -176,11 +177,11 @@ void mesurer() {
 }
 
 void setup() {
+    Serial.begin(9600);
     setupSPI();
     setupVelo();
-    setupGlobal();
+    /* setupGlobal(); */
     temps = millis();
-    Serial.begin(9600);
 }
 
 void loop() {
