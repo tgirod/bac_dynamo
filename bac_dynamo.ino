@@ -1,6 +1,7 @@
-#include <SPI.h>
+#include <LedControl.h>
 
-#define NB_VELO 2
+#define DEBUG Serial.println(__func__)
+#define NB_INDIV 8
 
 typedef struct {
     int prod; // production instantannée en Watts
@@ -8,7 +9,7 @@ typedef struct {
     unsigned long dernier; // timestamp du dernier relevé
 } velo_t;
 
-velo_t velo[NB_VELO] = {{0,0,0}};
+velo_t velo[NB_INDIV];
 
 unsigned long temps = 0; // temps écoulé depuis le lancement
 int prod; // production instantannée totale en Watts
@@ -19,79 +20,23 @@ int prod_cumul; // production totale cumulée en Watts/heure
  */
 
 #define CS_GLOBAL 9
-#define CS_VELO 10
+#define CS_INDIV 10
 #define MOSI 11
-#define MISO 12 // a priori inutile
 #define CLK 13
 
-// Opcodes
-#define OP_NOOP         0x00
-#define OP_DIGIT0       0x01
-#define OP_DIGIT1       0x02
-#define OP_DIGIT2       0x03
-#define OP_DIGIT3       0x04
-#define OP_DIGIT4       0x05
-#define OP_DIGIT5       0x06
-#define OP_DIGIT6       0x07
-#define OP_DIGIT7       0x08
-#define OP_DECODEMODE   0x09
-#define OP_INTENSITY    0x0A
-#define OP_SCANLIMIT    0x0B
-#define OP_SHUTDOWN     0x0C
-#define OP_DISPLAYTEST  0x0F
-
-/*
- * Paramètres pour la connexion série. Potentiellement utile si j'ai des soucis
- * de transmission
- */
-
-const SPISettings settings = SPISettings(
-        10000000, // maximum speed
-        MSBFIRST, // bit order
-        SPI_MODE0 // data mode
-        );
-
-/*
- * FIXME : utiliser SPISettings pour initialiser la liaison
- */
-
-#define OPEN(CS) digitalWrite((CS), LOW)
-#define SEND(ADDR,DATA) SPI.transfer16((ADDR<<8)+(DATA))
-#define CLOSE(CS) digitalWrite((CS), HIGH)
-
-void setupSPI() {
-    pinMode(CS_VELO, OUTPUT);
-    digitalWrite(CS_VELO, HIGH);
-    pinMode(CS_GLOBAL, OUTPUT);
-    digitalWrite(CS_GLOBAL, HIGH);
-    SPI.setBitOrder(MSBFIRST);
-    SPI.begin();
-}
+LedControl lcIndiv = LedControl(MOSI, CLK, CS_INDIV, NB_INDIV);
 
 /*
  * initialise les modules d'affichage pour les vélos
  */
 
-void setupVelo() {
-    // mode B, permet d'afficher 0-9
-    OPEN(CS_VELO);
-    for (int i=0; i<NB_VELO; i++) SEND(OP_DECODEMODE, 0xFF);
-    CLOSE(CS_VELO);
-
-    // réglage de l'intensité de l'affichage
-    OPEN(CS_VELO);
-    for (int i=0; i<NB_VELO; i++) SEND(OP_INTENSITY, 0xFF);
-    CLOSE(CS_VELO);
-
-    // Scan 6 digits
-    OPEN(CS_VELO);
-    for (int i=0; i<NB_VELO; i++) SEND(OP_SCANLIMIT, 0x05);
-    CLOSE(CS_VELO);
-
-    // Activation de la puce
-    OPEN(CS_VELO);
-    for (int i=0; i<NB_VELO; i++) SEND(OP_SHUTDOWN, 0x01);
-    CLOSE(CS_VELO);
+void setupIndiv() {
+    for (int i=0; i<NB_INDIV; i++) {
+        lcIndiv.setScanLimit(i,6);
+        lcIndiv.setIntensity(i,8);
+        lcIndiv.clearDisplay(i);
+        lcIndiv.shutdown(i,false);
+    }
 }
 
 /*
@@ -99,26 +44,12 @@ void setupVelo() {
  */
 
 void setupGlobal() {
-
-    // mode B, permet d'afficher 0-9
-    OPEN(CS_GLOBAL);
-    for (int i=0; i<4; i++) SEND(OP_DECODEMODE, 0xFF);
-    CLOSE(CS_GLOBAL);
-
-    // réglage de l'intensité de l'affichage
-    OPEN(CS_GLOBAL);
-    for (int i=0; i<4; i++) SEND(OP_INTENSITY, 0x00);
-    CLOSE(CS_GLOBAL);
-
-    // Scan 6 digits
-    OPEN(CS_GLOBAL);
-    for (int i=0; i<4; i++) SEND(OP_SCANLIMIT, 0x05);
-    CLOSE(CS_GLOBAL);
-
-    // Activation de la puce
-    OPEN(CS_GLOBAL);
-    for (int i=0; i<4; i++) SEND(OP_SHUTDOWN, 0x01);
-    CLOSE(CS_GLOBAL);
+    for (int i=0; i<4; i++) {
+        lcIndiv.setScanLimit(i,8);
+        lcIndiv.setIntensity(i,8);
+        lcIndiv.clearDisplay(i);
+        lcIndiv.shutdown(i,false);
+    }
 }
 
 /*
@@ -137,23 +68,14 @@ long combiner3(long x, long y) {
  * Mise à jour de tous les affichages vélo.
  */
 
-void updateVelo() {
-    // pour chaque vélo, on combine les deux nombres à afficher en un seul
-    long data[NB_VELO];
-    for (int i=0; i<NB_VELO; i++) {
-        data[i] = combiner3(velo[i].prod, velo[i].pic);
-    }
-
-    // chaque digit doit être envoyé séparément, en commençant par la fin
-    for (word addr = OP_DIGIT5; addr >= OP_DIGIT0; addr--) {
-        OPEN(CS_VELO);
-        // pour éviter les NOOP, on actualise DIGITx en même temps sur tous les
-        // modules
-        for (int i = NB_VELO-1; i>=0; i--) {
-            SEND(addr, data[i]%10);
-            data[i] = data[i]/10;
+void updateIndiv() {
+    long num;
+    for (int i=0; i<NB_INDIV; i++) {
+        num = combiner3(velo[i].prod, velo[i].pic);
+        for (int j=5; j>=0; j--) {
+            lcIndiv.setDigit(i, j, num % 10, false);
+            num = num/10;
         }
-        CLOSE(CS_VELO);
     }
 }
 
@@ -170,7 +92,7 @@ void updateGlobal() {
  */
 
 void mesurer() {
-    for (int i=0; i<NB_VELO; i++) {
+    for (int i=0; i<NB_INDIV; i++) {
         velo[i].prod++;
         velo[i].pic++;
     }
@@ -178,15 +100,19 @@ void mesurer() {
 
 void setup() {
     Serial.begin(9600);
-    setupSPI();
-    setupVelo();
+    for (int i=0; i<NB_INDIV; i++) {
+        velo[i].prod= i;
+        velo[i].pic = i*10;
+    }
+
+    setupIndiv();
     /* setupGlobal(); */
-    temps = millis();
+    /* temps = millis(); */
 }
 
 void loop() {
     mesurer();
-    updateVelo();
+    updateIndiv();
     /* updateGlobal(); */
     delay(1000);
 }
