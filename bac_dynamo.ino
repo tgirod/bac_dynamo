@@ -96,15 +96,41 @@ void updateGlobal() {
 #define NB_LEDS 24 // nombre de LEDs sur le ruban
 
 CRGB leds[NB_LEDS];
-CRGB colors[NB_LEDS];
+CRGB colors[NB_LEDS] = {
+    CHSV(160,255,255),
+    CHSV(150,255,255),
+    CHSV(140,255,255),
+    CHSV(130,255,255),
+    CHSV(120,255,255),
+    CHSV(110,255,255),
+    CHSV(96,255,255),
+    CHSV(91,255,255),
+    CHSV(86,255,255),
+    CHSV(81,255,255),
+    CHSV(76,255,255),
+    CHSV(71,255,255),
+    CHSV(64,255,255),
+    CHSV(59,255,255),
+    CHSV(54,255,255),
+    CHSV(49,255,255),
+    CHSV(44,255,255),
+    CHSV(39,255,255),
+    CHSV(32,255,255),
+    CHSV(26,255,255),
+    CHSV(20,255,255),
+    CHSV(14,255,255),
+    CHSV(8,255,255),
+    CHSV(0,255,255),
+};
+
 int niveau;
 
 void setupRuban() {
     pinMode(PIN_RUBAN, OUTPUT);
     FastLED.addLeds<NEOPIXEL, PIN_RUBAN>(leds, NB_LEDS);
-    for (int i=0; i<NB_LEDS; i++) {
-        colors[i] = CHSV(i*255/NB_LEDS, 255, 255);
-    }
+    /* for (int i=0; i<NB_LEDS; i++) { */
+    /*     colors[i] = CHSV(80+i*255/NB_LEDS, 255, 255); */
+    /* } */
 }
 
 const int echelle[24] = {
@@ -116,7 +142,7 @@ const int echelle[24] = {
 
 void updateRuban() {
     int niv = 0;
-    while (niv<24 && echelle[niv] < prod)
+    while (niv<24 && echelle[niv] <= prod)
         niv++;
 
     if (niv > niveau) {
