@@ -1,23 +1,24 @@
 #include <LedControl.h>
+#include <Adafruit_NeoPixel.h>
 
 #define DEBUG Serial.println(__func__)
-#define NB_INDIV 8
+#define NB_INDIV 0 // nombre de vélos
 
 typedef struct {
-    int prod; // production instantannée en Watts
-    int pic; // pic de production en Watts
+    int prod;              // production instantannée en Watts
+    int pic;               // pic de production en Watts
     unsigned long dernier; // timestamp du dernier relevé
 } velo_t;
 
 velo_t velo[NB_INDIV];
 
 unsigned long temps = 0; // temps écoulé depuis le lancement
-int prod; // production instantannée totale en Watts
-int prod_cumul; // production totale cumulée en Watts/heure
+int prod;                // production instantannée totale en Watts
+int prod_cumul;          // production totale cumulée en Watts/heure
 
-/*
- * Communication avec les MAX7219 pour piloter les afficheurs
- */
+/* ********************************************************** */
+/* Communication avec les MAX7219 pour piloter les afficheurs */
+/* ********************************************************** */
 
 #define CS_GLOBAL 9
 #define CS_INDIV 10
@@ -87,16 +88,50 @@ void updateGlobal() {
 
 }
 
-/*
- * relever les mesures de courant sur les vélos
- */
+/* ************************* */
+/* Pilotage du ruban de LEDs */
+/* ************************* */
+
+#define PIN_RUBAN 6 // pin du ruban de LED
+#define NB_LEDS 24 // nombre de LEDs sur le ruban
+
+Adafruit_NeoPixel ruban = Adafruit_NeoPixel(NB_LEDS, PIN_RUBAN);
+
+void setupRuban() {
+    pinMode(PIN_RUBAN, OUTPUT);
+    ruban.begin();
+}
+
+void updateRuban() {
+    for (int i=0; i<NB_LEDS; i++) {
+        ruban.setPixelColor(i, ruban.Color(random(256), random(256), random(256)));
+    }
+    ruban.show();
+}
+
+
+/* ******************************** */
+/* MESURES DE COURANT SUR LES VELOS */
+/* ******************************** */
 
 void mesurer() {
+    velo_t v;
+    prod = 0;
     for (int i=0; i<NB_INDIV; i++) {
-        velo[i].prod++;
-        velo[i].pic++;
+        v = velo[i];
+        v.prod = random(80,120); // FIXME remplacer par la vraie mesure
+        prod += v.prod;
+        if (v.prod > v.pic) {
+            v.pic = v.prod;
+        }
     }
+    unsigned long dur = millis() - temps;
+    
 }
+
+/* ******************** */
+/* FONCTION PRINCIPALES */
+/* ******************** */
 
 void setup() {
     Serial.begin(9600);
@@ -105,14 +140,16 @@ void setup() {
         velo[i].pic = i*10;
     }
 
-    setupIndiv();
+    /* setupIndiv(); */
     /* setupGlobal(); */
+    setupRuban();
     /* temps = millis(); */
 }
 
 void loop() {
-    mesurer();
-    updateIndiv();
+    /* mesurer(); */
+    /* updateIndiv(); */
     /* updateGlobal(); */
+    updateRuban();
     delay(1000);
 }
