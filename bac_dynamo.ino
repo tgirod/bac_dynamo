@@ -169,14 +169,12 @@ void updateRuban() {
 /* ******************************** */
 
 void mesurer() {
-    velo_t v;
     prod = 0;
     for (int i=0; i<NB_INDIV; i++) {
-        v = velo[i];
-        v.prod = random(0,200); // FIXME remplacer par la vraie mesure
-        prod += v.prod;
-        if (v.prod > v.pic) {
-            v.pic = v.prod;
+        velo[i].prod = random(0,200); // FIXME remplacer par la vraie mesure
+        prod += velo[i].prod;
+        if (velo[i].prod > velo[i].pic) {
+            velo[i].pic = velo[i].prod;
         }
     }
     unsigned long dur = millis() - temps;
