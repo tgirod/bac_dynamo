@@ -176,9 +176,15 @@ void mesurer() {
         if (velo[i].prod > velo[i].pic) {
             velo[i].pic = velo[i].prod;
         }
+        /* Serial.print("velo "); */
+        /* Serial.print(i); */
+        /* Serial.print(" : "); */
+        /* Serial.println(velo[i].prod); */
     }
     unsigned long dur = millis() - temps;
-    prod_cumul += (dur / 1000.0) * v.prod / 3600.0; 
+    prod_cumul += (dur / 1000.0) * prod / 3600.0; 
+    Serial.print("prod actuelle ");
+    Serial.println(prod);
     Serial.print("prod totale ");
     Serial.println(prod_cumul);
 }
