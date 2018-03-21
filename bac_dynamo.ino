@@ -195,12 +195,7 @@ void mesurer() {
 
 void setup() {
     Serial.begin(9600);
-    for (int i=0; i<NB_INDIV; i++) {
-        velo[i].prod= i;
-        velo[i].pic = i*10;
-    }
-
-    /* setupIndiv(); */
+    setupIndiv();
     /* setupGlobal(); */
     setupRuban();
     /* temps = millis(); */
@@ -208,7 +203,7 @@ void setup() {
 
 void loop() {
     mesurer();
-    /* updateIndiv(); */
+    updateIndiv();
     /* updateGlobal(); */
     updateRuban();
     delay(1000);
