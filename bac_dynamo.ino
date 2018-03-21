@@ -1,8 +1,8 @@
 #include <LedControl.h>
-#include <Adafruit_NeoPixel.h>
+#include <FastLED.h>
 
 #define DEBUG Serial.println(__func__)
-#define NB_INDIV 0 // nombre de vélos
+#define NB_INDIV 8 // nombre de vélos
 
 typedef struct {
     int prod;              // production instantannée en Watts
@@ -14,7 +14,7 @@ velo_t velo[NB_INDIV];
 
 unsigned long temps = 0; // temps écoulé depuis le lancement
 int prod;                // production instantannée totale en Watts
-int prod_cumul;          // production totale cumulée en Watts/heure
+float prod_cumul;        // production totale cumulée en Watts/heure
 
 /* ********************************************************** */
 /* Communication avec les MAX7219 pour piloter les afficheurs */
@@ -95,18 +95,46 @@ void updateGlobal() {
 #define PIN_RUBAN 6 // pin du ruban de LED
 #define NB_LEDS 24 // nombre de LEDs sur le ruban
 
-Adafruit_NeoPixel ruban = Adafruit_NeoPixel(NB_LEDS, PIN_RUBAN);
+CRGB leds[NB_LEDS];
+CRGB colors[NB_LEDS];
+int niveau;
 
 void setupRuban() {
     pinMode(PIN_RUBAN, OUTPUT);
-    ruban.begin();
+    FastLED.addLeds<NEOPIXEL, PIN_RUBAN>(leds, NB_LEDS);
+    for (int i=0; i<NB_LEDS; i++) {
+        colors[i] = CHSV(i*255/NB_LEDS, 255, 255);
+    }
 }
 
+const int echelle[24] = {
+    13,26,32,48,64,80, // premier palier 80W
+    125,170,215,260,305,350, // deuxième palier, 350W
+    458,566,675,783,891,1000, // troisième palier, 1000W
+    1333,1666,2000,2333,2666,3000 // dernier palier, 3000W
+};
+
 void updateRuban() {
-    for (int i=0; i<NB_LEDS; i++) {
-        ruban.setPixelColor(i, ruban.Color(random(256), random(256), random(256)));
+    int niv = 0;
+    while (niv<24 && echelle[niv] < prod)
+        niv++;
+
+    if (niv > niveau) {
+        int dur = 500 / (niv-niveau);
+        for (int i=niveau; i<niv; i++) {
+            leds[i] = colors[i];
+            FastLED.show();
+            delay(dur);
+        }
+    } else if (niv < niveau) {
+        int dur = 500 / (niveau-niv);
+        for (int i=niveau; i>=niv; i--) {
+            leds[i] = CRGB::Black;
+            FastLED.show();
+            delay(dur);
+        }
     }
-    ruban.show();
+    niveau = niv;
 }
 
 
@@ -119,14 +147,16 @@ void mesurer() {
     prod = 0;
     for (int i=0; i<NB_INDIV; i++) {
         v = velo[i];
-        v.prod = random(80,120); // FIXME remplacer par la vraie mesure
+        v.prod = random(0,200); // FIXME remplacer par la vraie mesure
         prod += v.prod;
         if (v.prod > v.pic) {
             v.pic = v.prod;
         }
     }
     unsigned long dur = millis() - temps;
-    
+    prod_cumul += (dur / 1000.0) * v.prod / 3600.0; 
+    Serial.print("prod totale ");
+    Serial.println(prod_cumul);
 }
 
 /* ******************** */
@@ -147,7 +177,7 @@ void setup() {
 }
 
 void loop() {
-    /* mesurer(); */
+    mesurer();
     /* updateIndiv(); */
     /* updateGlobal(); */
     updateRuban();
