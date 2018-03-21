@@ -198,7 +198,7 @@ void setup() {
     setupIndiv();
     /* setupGlobal(); */
     setupRuban();
-    /* temps = millis(); */
+    temps = millis();
 }
 
 void loop() {
