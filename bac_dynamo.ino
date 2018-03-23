@@ -12,9 +12,11 @@ typedef struct {
 
 velo_t velo[NB_VELO];
 
-unsigned long temps = 0; // temps écoulé depuis le lancement
-int prod;                // production instantannée totale en Watts
-float prod_cumul;        // production totale cumulée en Watts/heure
+struct {
+    int prod;                // production instantannée totale en Watts
+    float cumul;             // production totale cumulee en Watts/heure
+    unsigned long temps = 0; // temps écoulé depuis le lancement
+} global;
 
 /* ********************************************************** */
 /* Communication avec les MAX7219 pour piloter les afficheurs */
@@ -142,7 +144,7 @@ const int echelle[24] = {
 
 void updateRuban() {
     int niv = 0;
-    while (niv<24 && echelle[niv] <= prod)
+    while (niv<24 && echelle[niv] <= global.prod)
         niv++;
 
     if (niv > niveau) {
@@ -168,8 +170,9 @@ void updateRuban() {
 /* MESURES DE COURANT SUR LES VELOS */
 /* ******************************** */
 
-const byte amp_pins[8] = {A0, A1, A2, A3, A4, A5, A6, A7}; // pins des ampèremètres
-#define MAX_AMP 20.0f                                      // mesure maximale des ampèremètres
+const byte amp_pins[8] = {A0, A1, A2, A3, A4, A5, A6, A7};
+#define MAX_AMP 20.0f // mesure maximale des ampèremètres
+#define TENSION 26.0f // tension nominale des générateurs
 
 void setupMesure() {
     for (int i=0; i<NB_VELO; i++) {
@@ -178,16 +181,21 @@ void setupMesure() {
 }
 
 void updateMesure() {
-    prod = 0;
+    DEBUG;
+    global.prod = 0;
     for (int i=0; i<NB_VELO; i++) {
-        velo[i].prod = analogRead(amp_pins[i]) / 1023. * MAX_AMP;
-        prod += velo[i].prod;
+        int mesure = analogRead(amp_pins[i]);  // mesure analogique [0-1023]
+        float amp =  mesure / 1023. * MAX_AMP; // conversion en ampères
+        velo[i].prod = amp * TENSION;          // conversion en watts
+        global.prod += velo[i].prod;
         if (velo[i].prod > velo[i].pic) {
             velo[i].pic = velo[i].prod;
         }
+        Serial.println(mesure);
     }
-    unsigned long dur = millis() - temps;
-    prod_cumul += (dur / 1000.0) * prod / 3600.0; 
+    // puissance produite depuis la dernière mesure
+    float dur = (millis() - global.temps) / 1000. / 3600.; // temps écoulé en heures
+    global.cumul += dur * global.prod; // ajout de la puissance produite en Watts/h
 }
 
 /* ******************** */
@@ -200,7 +208,7 @@ void setup() {
     setupVelo();
     /* setupGlobal(); */
     setupRuban();
-    temps = millis();
+    global.temps = millis();
 }
 
 void loop() {
