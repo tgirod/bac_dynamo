@@ -1,7 +1,9 @@
 #include <LedControl.h>
 #include <FastLED.h>
+#include <ArduinoSTL.h>
 
-#define DEBUG Serial.println(__func__)
+using namespace std;
+
 #define NB_VELO 8 // nombre de vélos
 
 typedef struct {
@@ -171,8 +173,6 @@ void updateRuban() {
 /* ******************************** */
 
 const byte amp_pins[8] = {A0, A1, A2, A3, A4, A5, A6, A7};
-#define MAX_AMP 20.0f // mesure maximale des ampèremètres
-#define TENSION 26.0f // tension nominale des générateurs
 
 void setupMesure() {
     for (int i=0; i<NB_VELO; i++) {
@@ -180,22 +180,43 @@ void setupMesure() {
     }
 }
 
+/* Le module ACS712 peut mesurer un courant allant jusqu'à 20A, positif ou
+ * négatif. La correspondance entre le courant mesuré et la tension en sortie
+ * du module est donc la suivante :
+ * 
+ *  20A -->   5V --> 1023
+ *   0A --> 2.5V -->  512
+ * -20A -->   0V -->    0
+ *
+ */
+
+// facteur permettant de faire la conversion analogRead() -> Courant mesuré
+const float ampParUnit = 20 / 512.;
+// tension produite par un générateur
+const int tensionGen = 26;
+
+int mesure(byte pin) {
+    int raw = analogRead(pin); // mesure analogique [0-1023]
+    float intensite = (raw-512) * ampParUnit;
+    if (intensite < 0) intensite = -intensite; // au cas ou le câble serait branché à l'envers
+    int puissance = intensite * tensionGen;
+    return puissance;
+}
+
 void updateMesure() {
-    DEBUG;
     global.prod = 0;
     for (int i=0; i<NB_VELO; i++) {
-        int mesure = analogRead(amp_pins[i]);  // mesure analogique [0-1023]
-        float amp =  mesure / 1023. * MAX_AMP; // conversion en ampères
-        velo[i].prod = amp * TENSION;          // conversion en watts
+        velo[i].prod = mesure(amp_pins[i]);
+        cout << "velo:" << i << " | puissance:" << velo[i].prod << endl;
         global.prod += velo[i].prod;
         if (velo[i].prod > velo[i].pic) {
             velo[i].pic = velo[i].prod;
         }
-        Serial.println(mesure);
     }
     // puissance produite depuis la dernière mesure
     float dur = (millis() - global.temps) / 1000. / 3600.; // temps écoulé en heures
     global.cumul += dur * global.prod; // ajout de la puissance produite en Watts/h
+    cout << "----------" << endl;
 }
 
 /* ******************** */
