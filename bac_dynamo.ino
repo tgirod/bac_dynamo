@@ -194,11 +194,23 @@ void setupMesure() {
 const float ampParUnit = 20 / 512.;
 // tension produite par un générateur
 const int tensionGen = 26;
+
+/*
+ * Quand une source ne produit pas d'électricité, on lit des valeurs aléatoires
+ * sur A0. En activant la résistance pullup, on force l'entrée vers une valeur
+ * haute quand rien n'est branché.
+ *
+ * Comme un cycliste n'est pas censé pouvoir produire assez de courant pour
+ * monter aussi haut, on peut place un seuil discriminant au delà duquel on
+ * considère que la valeur est tellement élevée qu'elle est dûe à la résistance
+ * pullup.
+ */
+
 const int maxAnalogRead = 900;
 
 int mesure(byte pin) {
     int raw = analogRead(pin); // mesure analogique [0-1023]
-    if (raw > maxAnalogRead) raw = 512;
+    if (raw > maxAnalogRead) raw = 512; // production == 0
     float intensite = (raw-512) * ampParUnit;
     if (intensite < 0) intensite = -intensite; // au cas ou le câble serait branché à l'envers
     cout << "raw:" << raw << " intensite:" << intensite << endl;
