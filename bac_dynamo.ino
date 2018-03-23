@@ -2,7 +2,7 @@
 #include <FastLED.h>
 
 #define DEBUG Serial.println(__func__)
-#define NB_INDIV 8 // nombre de vélos
+#define NB_VELO 8 // nombre de vélos
 
 typedef struct {
     int prod;              // production instantannée en Watts
@@ -10,7 +10,7 @@ typedef struct {
     unsigned long dernier; // timestamp du dernier relevé
 } velo_t;
 
-velo_t velo[NB_INDIV];
+velo_t velo[NB_VELO];
 
 unsigned long temps = 0; // temps écoulé depuis le lancement
 int prod;                // production instantannée totale en Watts
@@ -21,22 +21,22 @@ float prod_cumul;        // production totale cumulée en Watts/heure
 /* ********************************************************** */
 
 #define CS_GLOBAL 9
-#define CS_INDIV 10
+#define CS_VELO 10
 #define MOSI 11
 #define CLK 13
 
-LedControl lcIndiv = LedControl(MOSI, CLK, CS_INDIV, NB_INDIV);
+LedControl lcVelo = LedControl(MOSI, CLK, CS_VELO, NB_VELO);
 
 /*
  * initialise les modules d'affichage pour les vélos
  */
 
-void setupIndiv() {
-    for (int i=0; i<NB_INDIV; i++) {
-        lcIndiv.setScanLimit(i,6);
-        lcIndiv.setIntensity(i,8);
-        lcIndiv.clearDisplay(i);
-        lcIndiv.shutdown(i,false);
+void setupVelo() {
+    for (int i=0; i<NB_VELO; i++) {
+        lcVelo.setScanLimit(i,6);
+        lcVelo.setIntensity(i,8);
+        lcVelo.clearDisplay(i);
+        lcVelo.shutdown(i,false);
     }
 }
 
@@ -46,10 +46,10 @@ void setupIndiv() {
 
 void setupGlobal() {
     for (int i=0; i<4; i++) {
-        lcIndiv.setScanLimit(i,8);
-        lcIndiv.setIntensity(i,8);
-        lcIndiv.clearDisplay(i);
-        lcIndiv.shutdown(i,false);
+        lcVelo.setScanLimit(i,8);
+        lcVelo.setIntensity(i,8);
+        lcVelo.clearDisplay(i);
+        lcVelo.shutdown(i,false);
     }
 }
 
@@ -69,12 +69,12 @@ long combiner3(long x, long y) {
  * Mise à jour de tous les affichages vélo.
  */
 
-void updateIndiv() {
+void updateVelo() {
     long num;
-    for (int i=0; i<NB_INDIV; i++) {
+    for (int i=0; i<NB_VELO; i++) {
         num = combiner3(velo[i].prod, velo[i].pic);
         for (int j=5; j>=0; j--) {
-            lcIndiv.setDigit(i, j, num % 10, false);
+            lcVelo.setDigit(i, j, num % 10, false);
             num = num/10;
         }
     }
@@ -173,7 +173,7 @@ const byte amp_pins[8] = {A0, A1, A2, A3, A4, A5, A6, A7}; // pins des ampèrem�
 
 void mesurer() {
     prod = 0;
-    for (int i=0; i<NB_INDIV; i++) {
+    for (int i=0; i<NB_VELO; i++) {
         velo[i].prod = analogRead(amp_pins[i]) / 1023. * MAX_AMP;
         prod += velo[i].prod;
         if (velo[i].prod > velo[i].pic) {
@@ -190,7 +190,7 @@ void mesurer() {
 
 void setup() {
     Serial.begin(9600);
-    setupIndiv();
+    setupVelo();
     /* setupGlobal(); */
     setupRuban();
     temps = millis();
@@ -198,7 +198,7 @@ void setup() {
 
 void loop() {
     mesurer();
-    updateIndiv();
+    updateVelo();
     /* updateGlobal(); */
     updateRuban();
     delay(1000);
