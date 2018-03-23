@@ -176,7 +176,7 @@ const byte amp_pins[8] = {A0, A1, A2, A3, A4, A5, A6, A7};
 
 void setupMesure() {
     for (int i=0; i<NB_VELO; i++) {
-        pinMode(amp_pins[i], INPUT);
+        pinMode(amp_pins[i], INPUT_PULLUP);
     }
 }
 
@@ -194,11 +194,14 @@ void setupMesure() {
 const float ampParUnit = 20 / 512.;
 // tension produite par un générateur
 const int tensionGen = 26;
+const int maxAnalogRead = 900;
 
 int mesure(byte pin) {
     int raw = analogRead(pin); // mesure analogique [0-1023]
+    if (raw > maxAnalogRead) raw = 512;
     float intensite = (raw-512) * ampParUnit;
     if (intensite < 0) intensite = -intensite; // au cas ou le câble serait branché à l'envers
+    cout << "raw:" << raw << " intensite:" << intensite << endl;
     int puissance = intensite * tensionGen;
     return puissance;
 }
@@ -207,7 +210,6 @@ void updateMesure() {
     global.prod = 0;
     for (int i=0; i<NB_VELO; i++) {
         velo[i].prod = mesure(amp_pins[i]);
-        cout << "velo:" << i << " | puissance:" << velo[i].prod << endl;
         global.prod += velo[i].prod;
         if (velo[i].prod > velo[i].pic) {
             velo[i].pic = velo[i].prod;
