@@ -206,15 +206,17 @@ const int tensionGen = 26;
  * pullup.
  */
 
-const int maxAnalogRead = 900;
+const int maxPuissance = 400;
 
 int mesure(byte pin) {
     int raw = analogRead(pin); // mesure analogique [0-1023]
-    if (raw > maxAnalogRead) raw = 512; // production == 0
     float intensite = (raw-512) * ampParUnit;
     if (intensite < 0) intensite = -intensite; // au cas ou le câble serait branché à l'envers
-    cout << "raw:" << raw << " intensite:" << intensite << endl;
     int puissance = intensite * tensionGen;
+    cout << " raw:" << raw;
+    cout << " intensite:" << intensite; 
+    if (puissance > maxPuissance) puissance = 0;
+    cout << " puissance:" << puissance << endl;
     return puissance;
 }
 
