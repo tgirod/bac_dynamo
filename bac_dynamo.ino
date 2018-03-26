@@ -177,7 +177,7 @@ const byte amp_pins[8] = {A0, A1, A2, A3, A4, A5, A6, A7};
 
 void setupMesure() {
     for (int i=0; i<NB_VELO; i++) {
-        pinMode(amp_pins[i], INPUT_PULLUP);
+        pinMode(amp_pins[i], INPUT);
     }
 }
 
