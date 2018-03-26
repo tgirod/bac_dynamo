@@ -7,6 +7,7 @@ using namespace std;
 #define NB_VELO 8 // nombre de vélos
 
 typedef struct {
+    int raw;               // mesure brute renvoyée par analogRead
     int prod;              // production instantannée en Watts
     int pic;               // pic de production en Watts
     unsigned long dernier; // timestamp du dernier relevé
@@ -195,44 +196,38 @@ const float ampParUnit = 20 / 512.;
 // tension produite par un générateur
 const int tensionGen = 26;
 
-/*
- * Quand une source ne produit pas d'électricité, on lit des valeurs aléatoires
- * sur A0. En activant la résistance pullup, on force l'entrée vers une valeur
- * haute quand rien n'est branché.
- *
- * Comme un cycliste n'est pas censé pouvoir produire assez de courant pour
- * monter aussi haut, on peut place un seuil discriminant au delà duquel on
- * considère que la valeur est tellement élevée qu'elle est dûe à la résistance
- * pullup.
+/* Convertit la tension mesurée par une entrée analogique en puissance fournie
+ * par le générateur.
  */
 
-const int maxPuissance = 400;
-
-int mesure(byte pin) {
-    int raw = analogRead(pin); // mesure analogique [0-1023]
+int calculProd(int raw) {
     float intensite = (raw-512) * ampParUnit;
     if (intensite < 0) intensite = -intensite; // au cas ou le câble serait branché à l'envers
     int puissance = intensite * tensionGen;
-    cout << " raw:" << raw;
-    cout << " intensite:" << intensite; 
-    if (puissance > maxPuissance) puissance = 0;
-    cout << " puissance:" << puissance << endl;
     return puissance;
 }
+
+const int sensibilite = 5;
 
 void updateMesure() {
     global.prod = 0;
     for (int i=0; i<NB_VELO; i++) {
-        velo[i].prod = mesure(amp_pins[i]);
+        int raw = analogRead(amp_pins[i]);
+        // on ignore toute variation inférieure à la sensibilité, pour limiter les flottements
+        if (abs(velo[i].raw - raw) > sensibilite) {
+            velo[i].raw = raw;
+            velo[i].prod = calculProd(raw);
+        }
         global.prod += velo[i].prod;
         if (velo[i].prod > velo[i].pic) {
             velo[i].pic = velo[i].prod;
         }
+        cout << velo[i].prod << " ";
     }
+    cout << endl;
     // puissance produite depuis la dernière mesure
     float dur = (millis() - global.temps) / 1000. / 3600.; // temps écoulé en heures
     global.cumul += dur * global.prod; // ajout de la puissance produite en Watts/h
-    cout << "----------" << endl;
 }
 
 /* ******************** */
