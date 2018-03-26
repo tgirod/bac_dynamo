@@ -213,6 +213,10 @@ void updateMesure() {
     global.prod = 0;
     for (int i=0; i<NB_VELO; i++) {
         int raw = analogRead(amp_pins[i]);
+        // on ignore toute mesure pas suffisament éloignée du point central (0Watt)
+        if (abs(raw-512) < sensibilite) {
+            raw = 512;
+        }
         // on ignore toute variation inférieure à la sensibilité, pour limiter les flottements
         if (abs(velo[i].raw - raw) > sensibilite) {
             velo[i].raw = raw;
