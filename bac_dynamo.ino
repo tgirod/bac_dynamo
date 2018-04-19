@@ -1,8 +1,5 @@
 #include <LedControl.h>
 #include <FastLED.h>
-#include <ArduinoSTL.h>
-
-using namespace std;
 
 #define NB_VELO 8 // nombre de vélos
 
@@ -25,12 +22,13 @@ struct {
 /* Communication avec les MAX7219 pour piloter les afficheurs */
 /* ********************************************************** */
 
-#define CS_GLOBAL 9
+#define CS_GLOBAL 11
 #define CS_VELO 10
-#define MOSI 11
-#define CLK 13
+#define CLK 9
+#define MOSI 8
 
 LedControl lcVelo = LedControl(MOSI, CLK, CS_VELO, NB_VELO);
+LedControl lcGlobal = LedControl(MOSI, CLK, CS_GLOBAL, 4);
 
 /*
  * initialise les modules d'affichage pour les vélos
@@ -51,10 +49,10 @@ void setupVelo() {
 
 void setupGlobal() {
     for (int i=0; i<4; i++) {
-        lcVelo.setScanLimit(i,8);
-        lcVelo.setIntensity(i,8);
-        lcVelo.clearDisplay(i);
-        lcVelo.shutdown(i,false);
+        lcGlobal.setScanLimit(i,4);
+        lcGlobal.setIntensity(i,8);
+        lcGlobal.clearDisplay(i);
+        lcGlobal.shutdown(i,false);
     }
 }
 
@@ -90,14 +88,13 @@ void updateVelo() {
  */
 
 void updateGlobal() {
-
 }
 
 /* ************************* */
 /* Pilotage du ruban de LEDs */
 /* ************************* */
 
-#define PIN_RUBAN 6 // pin du ruban de LED
+#define PIN_RUBAN 12 // pin du ruban de LED
 #define NB_LEDS 24 // nombre de LEDs sur le ruban
 
 CRGB leds[NB_LEDS];
@@ -133,9 +130,6 @@ int niveau;
 void setupRuban() {
     pinMode(PIN_RUBAN, OUTPUT);
     FastLED.addLeds<NEOPIXEL, PIN_RUBAN>(leds, NB_LEDS);
-    /* for (int i=0; i<NB_LEDS; i++) { */
-    /*     colors[i] = CHSV(80+i*255/NB_LEDS, 255, 255); */
-    /* } */
 }
 
 const int echelle[24] = {
@@ -201,8 +195,7 @@ const int tensionGen = 26;
  */
 
 int calculProd(int raw) {
-    float intensite = (raw-512) * ampParUnit;
-    if (intensite < 0) intensite = -intensite; // au cas ou le câble serait branché à l'envers
+    float intensite = abs(raw-512) * ampParUnit;
     int puissance = intensite * tensionGen;
     return puissance;
 }
@@ -226,9 +219,7 @@ void updateMesure() {
         if (velo[i].prod > velo[i].pic) {
             velo[i].pic = velo[i].prod;
         }
-        cout << velo[i].prod << " ";
     }
-    cout << endl;
     // puissance produite depuis la dernière mesure
     float dur = (millis() - global.temps) / 1000. / 3600.; // temps écoulé en heures
     global.cumul += dur * global.prod; // ajout de la puissance produite en Watts/h
@@ -240,17 +231,17 @@ void updateMesure() {
 
 void setup() {
     Serial.begin(9600);
-    setupMesure();
-    setupVelo();
-    /* setupGlobal(); */
-    setupRuban();
+    /* setupMesure(); */
+    /* setupVelo(); */
+    setupGlobal();
+    /* setupRuban(); */
     global.temps = millis();
 }
 
 void loop() {
-    updateMesure();
-    updateVelo();
-    /* updateGlobal(); */
-    updateRuban();
+    /* updateMesure(); */
+    /* updateVelo(); */
+    updateGlobal();
+    /* updateRuban(); */
     delay(1000);
 }
