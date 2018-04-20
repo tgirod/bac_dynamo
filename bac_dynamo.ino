@@ -4,7 +4,6 @@
 #define NB_VELO 8 // nombre de vélos
 
 typedef struct {
-    int raw;               // mesure brute renvoyée par analogRead
     int prod;              // production instantannée en Watts
     int pic;               // pic de production en Watts
     unsigned long dernier; // timestamp du dernier relevé
@@ -190,32 +189,29 @@ const float ampParUnit = 20 / 512.;
 // tension produite par un générateur
 const int tensionGen = 26;
 
-/* Convertit la tension mesurée par une entrée analogique en puissance fournie
- * par le générateur.
- */
-
-int calculProd(int raw) {
-    float intensite = abs(raw-512) * ampParUnit;
-    int puissance = intensite * tensionGen;
-    return puissance;
-}
-
 const int sensibilite = 5;
 
 void updateMesure() {
     global.prod = 0;
     for (int i=0; i<NB_VELO; i++) {
+        // lire l'entrée analogique
         int raw = analogRead(amp_pins[i]);
-        // on ignore toute mesure pas suffisament éloignée du point central (0Watt)
-        if (abs(raw-512) < sensibilite) {
-            raw = 512;
+        // convertir la mesure en puissance (Watts)
+        float intensite = abs(raw-512) * ampParUnit;
+        int puissance = intensite * tensionGen;
+
+        // ignorer toute mesure inférieure à la sensibilité
+        if (puissance < sensibilite) {
+            puissance = 0;
         }
-        // on ignore toute variation inférieure à la sensibilité, pour limiter les flottements
-        if (abs(velo[i].raw - raw) > sensibilite) {
-            velo[i].raw = raw;
-            velo[i].prod = calculProd(raw);
+
+        // on ne change la mesure que si elle diffère suffisament de la précédente
+        if (abs(velo[i].prod - puissance) > sensibilite) {
+            velo[i].prod = puissance;
         }
+
         global.prod += velo[i].prod;
+
         if (velo[i].prod > velo[i].pic) {
             velo[i].pic = velo[i].prod;
         }
@@ -231,17 +227,23 @@ void updateMesure() {
 
 void setup() {
     Serial.begin(9600);
-    /* setupMesure(); */
-    /* setupVelo(); */
+    setupMesure();
+    setupVelo();
     setupGlobal();
-    /* setupRuban(); */
+    setupRuban();
     global.temps = millis();
 }
 
 void loop() {
-    /* updateMesure(); */
-    /* updateVelo(); */
+    updateMesure();
+    for (int i=0; i<NB_VELO; i++) {
+        Serial.print(velo[i].prod);
+        Serial.print(" ");
+    }
+    Serial.println();
+
+    updateVelo();
     updateGlobal();
-    /* updateRuban(); */
+    updateRuban();
     delay(1000);
 }
