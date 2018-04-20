@@ -6,7 +6,6 @@
 typedef struct {
     int prod;              // production instantannée en Watts
     int pic;               // pic de production en Watts
-    unsigned long dernier; // timestamp du dernier relevé
 } velo_t;
 
 velo_t velo[NB_VELO];
@@ -14,7 +13,7 @@ velo_t velo[NB_VELO];
 struct {
     int prod;                // production instantannée totale en Watts
     float cumul;             // production totale cumulee en Watts/heure
-    unsigned long temps = 0; // temps écoulé depuis le lancement
+    unsigned long temps = 0; // milliseconde à laquelle la dernière mesure à été faite
 } global;
 
 /* ********************************************************** */
@@ -87,6 +86,30 @@ void setupGlobal() {
  */
 
 void updateGlobal() {
+    // MAJ temps écoulé
+    unsigned int secondes = millis() / 1000;
+    int hh = secondes / 3600; // nb d'heures à afficher
+    int mm = (secondes % 3600) / 60;  // nb de minutes à afficher
+    lcGlobal.setDigit(0, 0, hh/10, false);
+    lcGlobal.setDigit(0, 1, hh%10, true);
+    lcGlobal.setDigit(0, 2, mm/10, false);
+    lcGlobal.setDigit(0, 3, mm%10, true);
+
+    // MAJ prod courante
+    int prod = global.prod;
+    for (int i=3; i>=0; i--) {
+        lcGlobal.setDigit(1, i, prod % 10, false);
+        prod = prod/10;
+    }
+
+    // MAJ prod cumulée depuis le début
+    int cumul = global.cumul;
+    for (int i=3; i>=0; i--) {
+        lcGlobal.setDigit(2, i, cumul % 10, false);
+        cumul = cumul/10;
+    }
+
+    // ????
 }
 
 /* ************************* */
@@ -210,15 +233,17 @@ void updateMesure() {
             velo[i].prod = puissance;
         }
 
-        global.prod += velo[i].prod;
-
         if (velo[i].prod > velo[i].pic) {
             velo[i].pic = velo[i].prod;
         }
+
+        global.prod += velo[i].prod;
     }
     // puissance produite depuis la dernière mesure
-    float dur = (millis() - global.temps) / 1000. / 3600.; // temps écoulé en heures
+    unsigned long t = millis();
+    float dur = (t - global.temps) / 1000. / 3600.; // temps écoulé en heures
     global.cumul += dur * global.prod; // ajout de la puissance produite en Watts/h
+    global.temps = t;
 }
 
 /* ******************** */
