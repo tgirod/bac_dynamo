@@ -43,19 +43,6 @@ void setupVelo() {
 }
 
 /*
- * initalise les modules d'affichage des mesures globales
- */
-
-void setupGlobal() {
-    for (int i=0; i<4; i++) {
-        lcGlobal.setScanLimit(i,4);
-        lcGlobal.setIntensity(i,8);
-        lcGlobal.clearDisplay(i);
-        lcGlobal.shutdown(i,false);
-    }
-}
-
-/*
  * sur les petits affichages, deux nombres composés de trois chiffres sont
  * affichés. Les deux nombres à afficher sont transmis sous la forme d'un
  * entier au format XXXYYY
@@ -79,6 +66,19 @@ void updateVelo() {
             lcVelo.setDigit(i, j, num % 10, false);
             num = num/10;
         }
+    }
+}
+
+/*
+ * initalise les modules d'affichage des mesures globales
+ */
+
+void setupGlobal() {
+    for (int i=0; i<4; i++) {
+        lcGlobal.setScanLimit(i,4);
+        lcGlobal.setIntensity(i,8);
+        lcGlobal.clearDisplay(i);
+        lcGlobal.shutdown(i,false);
     }
 }
 
