@@ -93,7 +93,7 @@ void updateGlobal() {
     lcGlobal.setDigit(0, 0, hh/10, false);
     lcGlobal.setDigit(0, 1, hh%10, true);
     lcGlobal.setDigit(0, 2, mm/10, false);
-    lcGlobal.setDigit(0, 3, mm%10, true);
+    lcGlobal.setDigit(0, 3, mm%10, false);
 
     // MAJ prod courante
     int prod = global.prod;
