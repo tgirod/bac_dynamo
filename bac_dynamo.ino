@@ -3,6 +3,14 @@
 
 #define NB_VELO 8 // nombre de vélos
 
+// les 4 grosses parties du programme
+//#define MESURE // activer la mesure réelle
+//#define GLOBAL // activer l'affichage global
+//#define VELO // activer l'affichage individuel
+#define RUBAN // activer le ruban de led
+
+// état interne
+
 typedef struct {
     int prod;              // production instantannée en Watts
     int pic;               // pic de production en Watts
@@ -16,63 +24,26 @@ struct {
     unsigned long temps = 0; // milliseconde à laquelle la dernière mesure à été faite
 } global;
 
-/* ********************************************************** */
-/* Communication avec les MAX7219 pour piloter les afficheurs */
-/* ********************************************************** */
-
-#define CS_GLOBAL 11
-#define CS_VELO 10
 #define CLK 9
 #define MOSI 8
 
-LedControl lcVelo = LedControl(MOSI, CLK, CS_VELO, NB_VELO);
+/* ******************************************* */
+/* GESTION DE L'AFFICHAGE DES VALEURS GLOBALES */ 
+/* ******************************************* */
+
+#ifdef GLOBAL
+
+#define CS_GLOBAL 11
+
+// controlleur des afficheurs globaux
 LedControl lcGlobal = LedControl(MOSI, CLK, CS_GLOBAL, 4);
-
-/*
- * initialise les modules d'affichage pour les vélos
- */
-
-void setupVelo() {
-    for (int i=0; i<NB_VELO; i++) {
-        lcVelo.setScanLimit(i,6);
-        lcVelo.setIntensity(i,8);
-        lcVelo.clearDisplay(i);
-        lcVelo.shutdown(i,false);
-    }
-}
-
-/*
- * sur les petits affichages, deux nombres composés de trois chiffres sont
- * affichés. Les deux nombres à afficher sont transmis sous la forme d'un
- * entier au format XXXYYY
- */
-
-long combiner3(long x, long y) {
-    if (x > 999) x = 999;
-    if (y > 999) y = 999;
-    return x*1000 + y;
-}
-
-/*
- * Mise à jour de tous les affichages vélo.
- */
-
-void updateVelo() {
-    long num;
-    for (int i=0; i<NB_VELO; i++) {
-        num = combiner3(velo[i].prod, velo[i].pic);
-        for (int j=5; j>=0; j--) {
-            lcVelo.setDigit(i, j, num % 10, false);
-            num = num/10;
-        }
-    }
-}
 
 /*
  * initalise les modules d'affichage des mesures globales
  */
 
 void setupGlobal() {
+    Serial.println(__FUNCTION__);
     for (int i=0; i<4; i++) {
         lcGlobal.setScanLimit(i,4);
         lcGlobal.setIntensity(i,8);
@@ -86,6 +57,7 @@ void setupGlobal() {
  */
 
 void updateGlobal() {
+    Serial.println(__FUNCTION__);
     // MAJ temps écoulé
     unsigned int secondes = millis() / 1000;
     int hh = secondes / 3600; // nb d'heures à afficher
@@ -112,9 +84,69 @@ void updateGlobal() {
     // ????
 }
 
+#endif
+
+
+/* ******************************** */
+/* GESTION DE L'AFFICHAGE DES VELOS */
+/* ******************************** */
+
+#ifdef VELO
+
+#define CS_VELO 10
+
+LedControl lcVelo = LedControl(MOSI, CLK, CS_VELO, NB_VELO);
+
+
+/*
+ * initialise les modules d'affichage pour les vélos
+ */
+
+void setupVelo() {
+    Serial.println(__FUNCTION__);
+    for (int i=0; i<NB_VELO; i++) {
+        lcVelo.setScanLimit(i,6);
+        lcVelo.setIntensity(i,8);
+        lcVelo.clearDisplay(i);
+        lcVelo.shutdown(i,false);
+    }
+}
+
+/*
+ * sur les petits affichages, deux nombres composés de trois chiffres sont
+ * affichés. Les deux nombres à afficher sont transmis sous la forme d'un
+ * entier au format XXXYYY
+ */
+
+long combiner3(long x, long y) {
+    if (x > 999) x = 999;
+    if (y > 999) y = 999;
+    return x*1000 + y;
+}
+
+/*
+ * Mise à jour de tous les affichages vélo.
+ */
+
+void updateVelo() {
+    Serial.println(__FUNCTION__);
+    long num;
+    for (int i=0; i<NB_VELO; i++) {
+        num = combiner3(velo[i].prod, velo[i].pic);
+        for (int j=5; j>=0; j--) {
+            lcVelo.setDigit(i, j, num % 10, false);
+            num = num/10;
+        }
+    }
+}
+
+#endif
+
 /* ************************* */
-/* Pilotage du ruban de LEDs */
+/* PILOTAGE DU RUBAN DE LEDS */
 /* ************************* */
+
+#ifdef RUBAN
 
 #define PIN_RUBAN 12 // pin du ruban de LED
 #define NB_LEDS 24 // nombre de LEDs sur le ruban
@@ -150,6 +182,7 @@ CRGB colors[NB_LEDS] = {
 int niveau;
 
 void setupRuban() {
+    Serial.println(__FUNCTION__);
     pinMode(PIN_RUBAN, OUTPUT);
     FastLED.addLeds<NEOPIXEL, PIN_RUBAN>(leds, NB_LEDS);
 }
@@ -162,6 +195,7 @@ const int echelle[24] = {
 };
 
 void updateRuban() {
+    Serial.println(__FUNCTION__);
     int niv = 0;
     while (niv<24 && echelle[niv] <= global.prod)
         niv++;
@@ -184,14 +218,17 @@ void updateRuban() {
     niveau = niv;
 }
 
+#endif
 
 /* ******************************** */
 /* MESURES DE COURANT SUR LES VELOS */
 /* ******************************** */
 
+
 const byte amp_pins[8] = {A0, A1, A2, A3, A4, A5, A6, A7};
 
 void setupMesure() {
+    Serial.println(__FUNCTION__);
     for (int i=0; i<NB_VELO; i++) {
         pinMode(amp_pins[i], INPUT);
     }
@@ -214,7 +251,10 @@ const int tensionGen = 26;
 
 const int sensibilite = 5;
 
+#ifdef MESURE
+
 void updateMesure() {
+    Serial.println(__FUNCTION__);
     global.prod = 0;
     for (int i=0; i<NB_VELO; i++) {
         // lire l'entrée analogique
@@ -246,29 +286,67 @@ void updateMesure() {
     global.temps = t;
 }
 
+#else
+
+void updateMesure() {
+    Serial.print(__FUNCTION__);
+    Serial.println("_FAKE");
+    global.prod = 0;
+    for (int i=0; i<NB_VELO; i++) {
+        velo[i].prod = random(0,200);
+        if (velo[i].prod > velo[i].pic) {
+            velo[i].pic = velo[i].prod;
+        }
+        global.prod += velo[i].prod;
+    }
+    unsigned long t = millis();
+    float dur = (t - global.temps) / 1000. / 3600.; // temps écoulé en heures
+    global.cumul += dur * global.prod; // ajout de la puissance produite en Watts/h
+    global.temps = t;
+}
+
+#endif
+
 /* ******************** */
 /* FONCTION PRINCIPALES */
 /* ******************** */
 
 void setup() {
+    Serial.println(__FUNCTION__);
     Serial.begin(9600);
+#ifdef MESURE
     setupMesure();
+#endif
+#ifdef VELO
     setupVelo();
+#endif
+#ifdef GLOBAL
     setupGlobal();
+#endif
+#ifdef RUBAN
     setupRuban();
+#endif
     global.temps = millis();
 }
 
 void loop() {
+    Serial.println(__FUNCTION__);
     updateMesure();
     for (int i=0; i<NB_VELO; i++) {
         Serial.print(velo[i].prod);
         Serial.print(" ");
     }
-    Serial.println();
+    Serial.print(" = ");
+    Serial.println(global.prod);
 
+#ifdef VELO
     updateVelo();
+#endif
+#ifdef GLOBAL
     updateGlobal();
+#endif
+#ifdef RUBAN
     updateRuban();
+#endif
     delay(1000);
 }
