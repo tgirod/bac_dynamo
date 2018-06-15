@@ -1,12 +1,12 @@
 #include <LedControl.h>
 #include <FastLED.h>
 
-#define NB_VELO 8 // nombre de vélos
+#define NB_VELO 4 // nombre de vélos
 
 // les 4 grosses parties du programme
 //#define MESURE // activer la mesure réelle
-//#define GLOBAL // activer l'affichage global
-//#define VELO // activer l'affichage individuel
+#define GLOBAL // activer l'affichage global
+#define VELO // activer l'affichage individuel
 #define RUBAN // activer le ruban de led
 
 // état interne
@@ -106,7 +106,7 @@ void setupVelo() {
     Serial.println(__FUNCTION__);
     for (int i=0; i<NB_VELO; i++) {
         lcVelo.setScanLimit(i,6);
-        lcVelo.setIntensity(i,8);
+        lcVelo.setIntensity(i,15);
         lcVelo.clearDisplay(i);
         lcVelo.shutdown(i,false);
     }
